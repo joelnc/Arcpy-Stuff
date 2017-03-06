@@ -22,7 +22,6 @@ outws2 = r'C:\temp2'
 
 count = 1
 wCount = 1
-
 fid = []
 totalIc = []
 parArea = []
@@ -84,9 +83,11 @@ with arcpy.da.SearchCursor(wsheds, ["SHAPE@", "TILE_NAME"]) as cursor0:
         parArea = []
         buildIc = []
         pid = []
-
+        del row0
+        count = 1
         ## Inner loop (over parcels, within watershed)
-        with arcpy.da.SearchCursor(ParcelsShp, ["FID", "SHAPE@", "areaSF", "pid"]) as cursor:
+        with arcpy.da.SearchCursor(r'c:\temp2\tempWParc.shp',
+                                   ["FID", "SHAPE@", "areaSF", "pid"]) as cursor:
             for row in cursor:
                 ## Add to the fid list
                 fid.append(row[0])
@@ -95,10 +96,10 @@ with arcpy.da.SearchCursor(wsheds, ["SHAPE@", "TILE_NAME"]) as cursor0:
                 geom = row[1]
                 in_memory_feature = "in_memory\\" + "v" + str(name)
 
-                print "Parcel: " + str(row[3]) # misc print out
+                print "Parcel: " + str(row[3]) + ", " + name0 # misc print out
                 arcpy.CopyFeatures_management(geom, in_memory_feature)
-                arcpy.Clip_analysis(buildingIC, in_memory_feature, tempBuild)
-                arcpy.Clip_analysis(cityIC, in_memory_feature, tempTotal)
+                arcpy.Clip_analysis(r'c:\temp2\tempWBld.shp', in_memory_feature, tempBuild)
+                arcpy.Clip_analysis(r'c:\temp2\tempWIC.shp', in_memory_feature, tempTotal)
                 arcpy.Delete_management(in_memory_feature)
                 del in_memory_feature
                 arcpy.CalculateField_management(r'c:\temp\tempBuild.shp', "areaSF",
@@ -111,62 +112,61 @@ with arcpy.da.SearchCursor(wsheds, ["SHAPE@", "TILE_NAME"]) as cursor0:
                                                    arcpy.Geometry())
       
                 if len(geometriesB)==0: # if no buildings...
-                    print "No Buildings..."
+                    #print "No Buildings..."
                     buildIc.append(0) # no buildings, write 0
                 else:
                     totBld = 0 # init building sum
                     for building in range(0, len(geometriesB)): # for each bld, sum
                         totBld = totBld + geometriesB[building].getArea("PLANAR", "SQUAREFEET")
             
-                        print str(len(geometriesB)) + " Buildings, sqft = " + str(totBld)
+                        #print str(len(geometriesB)) + " Buildings, sqft = " + str(totBld)
                         buildIc.append(totBld) # write total building ic
 
                 ## Deal with total ic
                 geometriesT = arcpy.CopyFeatures_management(r'c:\temp\tempTotal.shp',
                                                             arcpy.Geometry())
                 if len(geometriesT)==0:
-                    print "No IC?????..."
+                    #print "No IC?????..."
                     totalIc.append(0) # no buildings, write 0
                 else:
                     totIc = 0
                     for icThing in range(0, len(geometriesT)):
                         totIc = totIc + geometriesT[icThing].getArea("PLANAR", "SQUAREFEET")
-                        print "Tot. sqft = " + str(totIc)
+                        #print "Tot. sqft = " + str(totIc)
                         totalIc.append(totIc) # write total building ic
 
                 ## Parcel Area......
                 parArea.append(row[2])
-                print "Parcel area = " + str(row[2])
-                print "/********/********/********/"
+                #print "Parcel area = " + str(row[2])
+                #print "/********/********/********/"
 
                 ## Parcel Area......
                 pid.append(row[3])
 
-                ## Wrap into list of lists to write to csv, to send to R
-                listOfLists = [fid, parArea, totalIc, buildIc, pid]
-
-                ## Write the lists out to a csv
-                with open("parcelICData" + name0 + ".csv", "wb") as f:
-                    writer = csv.writer(f)
-                    writer.writerows(listOfLists)
-        
-                del listOfLists
-                
                 shutil.rmtree(r'c:\temp') ## delete files, not dirs
                 os.makedirs(r'c:\temp')
 
-                if count==2:
-                    break
+                # if count==3:
+                #     break
                 count = count + 1
+        ## Wrap into list of lists to write to csv, to send to R
+        listOfLists = [fid, parArea, totalIc, buildIc, pid]
 
+        ## Write the lists out to a csv
+        with open("parcelICData" + name0 + ".csv", "wb") as f:
+            writer = csv.writer(f)
+            writer.writerows(listOfLists)
+        
+        del listOfLists
 
-#       del tempWBld, tempWIC, tempWParc
+        # del tempWBld, tempWIC, tempWParc
+        del row, cursor
         shutil.rmtree(r'c:\temp2')
         os.makedirs(r'c:\temp2')
 
-        print name0
-        if wCount==2:
-            break
+        #print name0
+        # if wCount==3:
+        #     break
         wCount = wCount + 1
 
 
