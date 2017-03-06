@@ -12,8 +12,8 @@ arcpy.env.workspace = r'C:\Users\95218\Documents\ArcGIS\SCM Crediting'
 ######################### Set files ##########################################
 cityIC = r'C:\Users\95218\Documents\ArcGIS\sde\DissCityIC.shp'
 buildingIC = r'C:\Users\95218\Documents\ArcGIS\SCM Crediting\CityBFPs.shp'
-ParcelsShp = r'C:\Users\95218\Documents\ArcGIS\sde\Parcels.shp'
-wsheds = r'C:\Users\95218\Documents\ArcGIS\sde\Watershed_Basins.shp'
+ParcelsShp = r'C:\Users\95218\Documents\ArcGIS\sde\ParcelsUnique.shp'
+wsheds = r'C:\Users\95218\Documents\ArcGIS\sde\Watershed_Basins6.shp'
 arcpy.CalculateField_management(ParcelsShp, "areaSF",
                                 "!shape.area@squarefeet!", "PYTHON_9.3", "")
 
