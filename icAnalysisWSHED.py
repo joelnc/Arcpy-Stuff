@@ -9,29 +9,11 @@ from itertools import izip
 ## Set workspace
 arcpy.env.workspace = r'C:\Users\95218\Documents\ArcGIS\SCM Crediting'
 
-######################### Geometry ##########################################
+######################### Set files ##########################################
 cityIC = r'C:\Users\95218\Documents\ArcGIS\sde\DissCityIC.shp'
-# arcpy.AddField_management(cityIC, "areaSF", "FLOAT", 16, 1, "",
-#                           "temp", "NULLABLE", "REQUIRED")
-# arcpy.CalculateField_management(cityIC, "areaSF",
-#                                 "!shape.area@squarefeet!", "PYTHON_9.3", "")
-
-#############################################################################
-#############################################################################
-## Layer file from city IC
-##arcpy.MakeFeatureLayer_management(cityIC, "cityIC_ly")
-
-## Get Building IC
 buildingIC = r'C:\Users\95218\Documents\ArcGIS\SCM Crediting\CityBFPs.shp'
-##arcpy.MakeFeatureLayer_management(buildingIC, "CitybuildingsIC")
-
-## Make a new feature layer out of buyout buildings
-arcpy.AddField_management(buildingIC, "areaSF", "FLOAT", 16, 1, "",
-                          "temp", "NULLABLE", "REQUIRED")
-arcpy.CalculateField_management(buildingIC, "areaSF",
-                                "!shape.area@squarefeet!", "PYTHON_9.3", "")
-
 ParcelsShp = r'C:\Users\95218\Documents\ArcGIS\sde\Parcels.shp'
+wsheds = r'C:\Users\95218\Documents\ArcGIS\sde\Watershed_Basins.shp'
 arcpy.CalculateField_management(ParcelsShp, "areaSF",
                                 "!shape.area@squarefeet!", "PYTHON_9.3", "")
 
@@ -44,12 +26,64 @@ parArea = []
 buildIc = []
 pid = []
 
-arcpy.management.Delete(in_memory_feature)
-del in_memory_feature
+arcpy.Delete_management(in_memory_feature_0)
+del in_memory_feature_0
 shutil.rmtree(r'c:\temp')
 os.makedirs(r'c:\temp')
 tempBuild = os.path.join(outws, "tempBuild") 
 tempTotal = os.path.join(outws, "tempTotal") 
+
+#start = time.time()
+with arcpy.da.SearchCursor(wsheds, ["SHAPE@", "TILE_NAME"]) as cursor0:
+    ## Outer loop over watersheds
+    for row0 in cursor0:
+        in_memory_feature_0 = "in_memory\\wshed"
+
+        tempWBld = os.path.join(outws, "tempWBld") 
+        tempWIC = os.path.join(outws, "tempWIC") 
+        tempWParc = os.path.join(outws, "tempWParc")
+
+        geom0 = row0[0]
+        name0 = row0[1]
+        arcpy.CopyFeatures_management(geom0, in_memory_feature_0)
+        arcpy.Clip_analysis(buildingIC, in_memory_feature_0, tempWBld)
+        arcpy.Clip_analysis(ParcelsShp, in_memory_feature_0, tempWParc)
+        arcpy.Clip_analysis(cityIC, in_memory_feature_0, tempWIC)
+        arcpy.CalculateField_management(r'c:\temp\tempWBld.shp', "areaSF",
+                                        "!shape.area@squarefeet!", "PYTHON_9.3", "")
+        arcpy.CalculateField_management(r'c:\temp\tempWIC.shp', "areaSF",
+                                        "!shape.area@squarefeet!", "PYTHON_9.3", "")
+        arcpy.CalculateField_management(r'c:\temp\tempWParc.shp', "areaSF",
+                                        "!shape.area@squarefeet!", "PYTHON_9.3", "")
+        arcpy.Delete_management(in_memory_feature_0)
+
+        fid = []
+        totalIc = []
+        parArea = []
+        buildIc = []
+        pid = []
+
+
+
+
+
+
+
+        
+        del tempWBld
+        del tempWIC
+        del tempWParc
+        print name0
+        shutil.rmtree(r'c:\temp')
+        os.makedirs(r'c:\temp')
+
+#############################################################################
+#############################################################################
+        
+
+
+        
+        
 
 with arcpy.da.SearchCursor(ParcelsShp, ["FID", "SHAPE@", "areaSF", "pid"]) as cursor:
     for row in cursor:
@@ -114,7 +148,8 @@ with arcpy.da.SearchCursor(ParcelsShp, ["FID", "SHAPE@", "areaSF", "pid"]) as cu
         count = count + 1
         shutil.rmtree(r'c:\temp')
         os.makedirs(r'c:\temp')
-
+end = time.time()
+print(end-start)
 
 
 ## Wrap into list of lists to write to csv, to send to R
