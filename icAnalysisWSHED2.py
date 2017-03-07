@@ -14,8 +14,6 @@ cityIC = r'C:\Users\95218\Documents\ArcGIS\sde\DissCityIC.shp'
 buildingIC = r'C:\Users\95218\Documents\ArcGIS\SCM Crediting\CityBFPs.shp'
 ParcelsShp = r'C:\Users\95218\Documents\ArcGIS\sde\ParcelsUnique.shp'
 wsheds = r'C:\Users\95218\Documents\ArcGIS\sde\Watershed_Basins6.shp'
-##arcpy.CalculateField_management(ParcelsShp, "areaSF",
-##                                "!shape.area@squarefeet!", "PYTHON_9.3", "")
 
 outws = r'C:\temp'
 outws2 = r'C:\temp2'
@@ -28,25 +26,6 @@ parArea = []
 buildIc = []
 pid = []
 
-# arcpy.Delete_management(in_memory_feature_0)
-# del in_memory_feature_0
-# arcpy.Delete_management(in_memory_feature)
-# del in_memory_feature
-
-
-shutil.rmtree(r'c:\temp')
-os.makedirs(r'c:\temp')
-shutil.rmtree(r'c:\temp2')
-os.makedirs(r'c:\temp2')
-tempBuild = os.path.join(outws, "tempBuild") # inner loop 
-tempTotal = os.path.join(outws, "tempTotal") # inner loop
-
-## Outer loop temps
-tempWBld = os.path.join(outws2, "tempWBld") 
-tempWIC = os.path.join(outws2, "tempWIC") 
-tempWParc = os.path.join(outws2, "tempWParc")
-
-
 #start = time.time()
 with arcpy.da.SearchCursor(wsheds, ["SHAPE@", "TILE_NAME"]) as cursor0:
     ## Outer loop over watersheds
@@ -58,26 +37,15 @@ with arcpy.da.SearchCursor(wsheds, ["SHAPE@", "TILE_NAME"]) as cursor0:
         arcpy.CopyFeatures_management(geom0, in_memory_feature_0)
 
         ## Clip to watershed, calc areas (necessary?)
+        tempWBld = "in_memory//tempWBld" 
+        tempWIC = "in_memory//tempWIC" 
+        tempWParc = "in_memory//tempWParc"
+
         arcpy.Clip_analysis(buildingIC, in_memory_feature_0, tempWBld)
         arcpy.Clip_analysis(ParcelsShp, in_memory_feature_0, tempWParc)
         arcpy.Clip_analysis(cityIC, in_memory_feature_0, tempWIC)
 
-        # arcpy.AddField_management(r'c:\temp2\tempWBld.shp', "areaSF", "FLOAT", 16, 1, "",
-        #                           "temp", "NULLABLE", "REQUIRED")
-        # arcpy.AddField_management(r'c:\temp2\tempWParc', "areaSF", "FLOAT", 16, 1, "",
-        #                           "temp", "NULLABLE", "REQUIRED")
-        # arcpy.AddField_management(r'c:\temp2\tempWIC', "areaSF", "FLOAT", 16, 1, "",
-        #                           "temp", "NULLABLE", "REQUIRED")
-
-        # arcpy.CalculateField_management(r'c:\temp2\tempWBld.shp', "areaSF",
-        #                                 "!shape.area@squarefeet!", "PYTHON_9.3", "")
-        # arcpy.CalculateField_management(r'c:\temp2\tempWIC.shp', "areaSF",
-        #                                 "!shape.area@squarefeet!", "PYTHON_9.3", "")
-        # arcpy.CalculateField_management(r'c:\temp2\tempWParc.shp', "areaSF",
-        #                                 "!shape.area@squarefeet!", "PYTHON_9.3", "")
-        # arcpy.Delete_management(in_memory_feature_0)
-
-        ## Initialize watershed data lists
+         ## Initialize watershed data lists
         fid = []
         totalIc = []
         parArea = []
@@ -86,8 +54,8 @@ with arcpy.da.SearchCursor(wsheds, ["SHAPE@", "TILE_NAME"]) as cursor0:
         del row0
         count = 1
         ## Inner loop (over parcels, within watershed)
-        with arcpy.da.SearchCursor(r'c:\temp2\tempWParc.shp',
-                                   ["FID", "SHAPE@", "Shape_Area", "pid"]) as cursor:
+        with arcpy.da.SearchCursor(tempWParc,
+                                   ["FID", "SHAPE@", "SHAPE_STAr", "taxpid"]) as cursor:
             for row in cursor:
                 ## Add to the fid list
                 fid.append(row[0])
@@ -98,58 +66,55 @@ with arcpy.da.SearchCursor(wsheds, ["SHAPE@", "TILE_NAME"]) as cursor0:
 
                 print "Parcel: " + str(row[3]) + ", " + name0 # misc print out
                 arcpy.CopyFeatures_management(geom, in_memory_feature)
-                arcpy.Clip_analysis(r'c:\temp2\tempWBld.shp', in_memory_feature, tempBuild)
-                arcpy.Clip_analysis(r'c:\temp2\tempWIC.shp', in_memory_feature, tempTotal)
+                
+                tempBuild = "in_memory//tempBuild"
+                tempTotal = "in_memory//tempTotal"
+                arcpy.Clip_analysis(tempWBld, in_memory_feature, tempBuild)
+                arcpy.Clip_analysis(tempWIC, in_memory_feature, tempTotal)
+
                 arcpy.Delete_management(in_memory_feature)
                 del in_memory_feature
-                # arcpy.CalculateField_management(r'c:\temp\tempBuild.shp', "areaSF",
-                #                                 "!shape.area@squarefeet!", "PYTHON_9.3", "")
-                # arcpy.CalculateField_management(r'c:\temp\tempTotal.shp', "areaSF",
-                #                                 "!shape.area@squarefeet!", "PYTHON_9.3", "")
                                                 
                 ## Deal with buildings
-                geometriesB = arcpy.CopyFeatures_management(r'c:\temp\tempBuild.shp',
+                geometriesB = arcpy.CopyFeatures_management(tempBuild,
                                                    arcpy.Geometry())
       
                 if len(geometriesB)==0: # if no buildings...
-                    #print "No Buildings..."
                     buildIc.append(0) # no buildings, write 0
                 else:
                     totBld = 0 # init building sum
                     for building in range(0, len(geometriesB)): # for each bld, sum
                         totBld = totBld + geometriesB[building].getArea("PLANAR", "SQUAREFEET")
-            
-                        #print str(len(geometriesB)) + " Buildings, sqft = " + str(totBld)
-                        buildIc.append(totBld) # write total building ic
+                    buildIc.append(totBld) # write total building ic
 
                 ## Deal with total ic
-                geometriesT = arcpy.CopyFeatures_management(r'c:\temp\tempTotal.shp',
+                geometriesT = arcpy.CopyFeatures_management(tempTotal,
                                                             arcpy.Geometry())
                 if len(geometriesT)==0:
-                    #print "No IC?????..."
                     totalIc.append(0) # no buildings, write 0
                 else:
                     totIc = 0
                     for icThing in range(0, len(geometriesT)):
                         totIc = totIc + geometriesT[icThing].getArea("PLANAR", "SQUAREFEET")
-                        #print "Tot. sqft = " + str(totIc)
-                        totalIc.append(totIc) # write total building ic
+                    totalIc.append(totIc) # write total building ic
 
                 ## Parcel Area......
                 parArea.append(row[2])
-                #print "Parcel area = " + str(row[2])
-                #print "/********/********/********/"
 
                 ## Parcel Area......
                 pid.append(row[3])
 
-                shutil.rmtree(r'c:\temp') ## delete files, not dirs
-                os.makedirs(r'c:\temp')
+                #shutil.rmtree(r'c:\temp') ## delete files, not dirs
+                arcpy.Delete_management(tempTotal)
+                arcpy.Delete_management(tempBuild)
 
-                if count==3:
-                    #del in_memory_feature_0
-                    arcpy.Delete_management(in_memory_feature_0)
-                    break
+                # if count==20:
+                #     arcpy.Delete_management(in_memory_feature_0)
+                #     arcpy.Delete_management(tempWBld)
+                #     arcpy.Delete_management(tempWIC)
+                #     arcpy.Delete_management(tempWParc)
+                #     break
+
                 count = count + 1
         ## Wrap into list of lists to write to csv, to send to R
         listOfLists = [fid, parArea, totalIc, buildIc, pid]
@@ -158,17 +123,17 @@ with arcpy.da.SearchCursor(wsheds, ["SHAPE@", "TILE_NAME"]) as cursor0:
         with open("parcelICData" + name0 + ".csv", "wb") as f:
             writer = csv.writer(f)
             writer.writerows(listOfLists)
-        
+
+        arcpy.Delete_management(in_memory_feature_0)
+        arcpy.Delete_management(tempWBld)
+        arcpy.Delete_management(tempWIC)
+        arcpy.Delete_management(tempWParc)
+
         del listOfLists
-
-        # del tempWBld, tempWIC, tempWParc
         del row, cursor
-        shutil.rmtree(r'c:\temp2')
-        os.makedirs(r'c:\temp2')
 
-        #print name0
-        if wCount==3:
-            break
+        # if wCount==10:
+        #     break
         wCount = wCount + 1
 
 
@@ -176,6 +141,6 @@ with arcpy.da.SearchCursor(wsheds, ["SHAPE@", "TILE_NAME"]) as cursor0:
 #############################################################################     
 
 ## Clunky, open file, transpose, write out
-a = izip(*csv.reader(open("parcelICData.csv", "rb")))
-csv.writer(open("parcelICData_t.csv", "wb")).writerows(a)
+#a = izip(*csv.reader(open("parcelICData.csv", "rb")))
+#csv.writer(open("parcelICData_t.csv", "wb")).writerows(a)
     
